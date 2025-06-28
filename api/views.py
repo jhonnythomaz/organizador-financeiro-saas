@@ -11,8 +11,12 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 
+# Importando o backend de filtro explicitamente
+from django_filters.rest_framework import DjangoFilterBackend
+
 from .models import Pagamento, Categoria, Cliente
 from .serializers import PagamentoSerializer, CategoriaSerializer, ClienteSerializer
+from .filters import PagamentoFilter # Importando nossa classe de filtro
 
 # --- Função Auxiliar Chave ---
 def get_cliente_from_request(request):
@@ -45,8 +49,16 @@ class CategoriaViewSet(viewsets.ModelViewSet):
 class PagamentoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = PagamentoSerializer
+    
+    # --- CORREÇÃO APLICADA AQUI ---
+    # Dizemos explicitamente para esta view usar o sistema de filtros
+    filter_backends = [DjangoFilterBackend]
+    # E especificamos qual conjunto de regras de filtro usar
+    filterset_class = PagamentoFilter
 
     def get_queryset(self):
+        # A lógica de get_queryset agora só precisa se preocupar com o isolamento do cliente.
+        # O Django-filter cuida de aplicar os filtros da URL automaticamente.
         cliente = get_cliente_from_request(self.request)
         return Pagamento.objects.filter(cliente=cliente)
 
@@ -78,7 +90,7 @@ def get_user_profile(request):
     }
     return Response(data)
 
-# --- NOVA VIEW PARA GERAÇÃO DE RELATÓRIO PDF ---
+# --- View de Geração de Relatório PDF ---
 class GerarRelatorioPDF(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -100,7 +112,6 @@ class GerarRelatorioPDF(APIView):
         p = canvas.Canvas(buffer, pagesize=letter)
         width, height = letter
 
-        # --- Desenhando o PDF ---
         p.setFont("Helvetica-Bold", 16)
         p.drawString(inch, height - inch, f"Relatório de Pagamentos")
         p.setFont("Helvetica", 12)
@@ -112,7 +123,7 @@ class GerarRelatorioPDF(APIView):
         p.drawString(inch, y, "Competência")
         p.drawString(2*inch, y, "Descrição")
         p.drawString(5*inch, y, "Categoria")
-        p.drawString(6.5*inch, y, "Valor (R$)")
+        p.drawRightString(width - inch, y, "Valor (R$)")
         y -= 15
         p.line(inch, y, width - inch, y)
         y -= 20
@@ -120,14 +131,15 @@ class GerarRelatorioPDF(APIView):
         p.setFont("Helvetica", 10)
         total = 0
         for pg in pagamentos:
-            if y < inch: # Page break
+            if y < inch:
                 p.showPage()
                 y = height - inch
                 p.setFont("Helvetica", 10)
 
+            categoria_nome = pg.categoria.nome if pg.categoria else 'N/A'
             p.drawString(inch, y, pg.data_competencia.strftime('%d/%m/%Y'))
             p.drawString(2*inch, y, pg.descricao[:40])
-            p.drawString(5*inch, y, pg.categoria.nome if pg.categoria else 'N/A')
+            p.drawString(5*inch, y, categoria_nome)
             valor_str = f"{pg.valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             p.drawRightString(width - inch, y, valor_str)
             total += pg.valor
