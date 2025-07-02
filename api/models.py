@@ -1,6 +1,7 @@
 # api/models.py
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 # --- Modelo do Inquilino (Tenant) ---
 class Cliente(models.Model):
@@ -27,10 +28,10 @@ class Categoria(models.Model):
     def __str__(self):
         return f"{self.nome} ({self.cliente.nome_empresa})"
 
+# --- CORREÇÃO: Status simplificado, pois "Atrasado" será calculado ---
 STATUS_CHOICES = [
     ('Pendente', 'Pendente'),
     ('Pago', 'Pago'),
-    ('Atrasado', 'Atrasado'),
 ]
 
 class Pagamento(models.Model):
@@ -41,9 +42,21 @@ class Pagamento(models.Model):
     data_vencimento = models.DateField()
     data_pagamento = models.DateField(blank=True, null=True)
     categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True)
+    # O status no banco só guarda 'Pendente' ou 'Pago'
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pendente')
     numero_nota_fiscal = models.CharField(max_length=50, blank=True, null=True)
     data_criacao = models.DateTimeField(auto_now_add=True)
+
+    # --- NOVA PROPRIEDADE INTELIGENTE ---
+    @property
+    def status_calculado(self):
+        if self.status == 'Pago':
+            return 'Pago'
+        
+        if self.data_vencimento < timezone.now().date():
+            return 'Atrasado'
+        
+        return 'Pendente'
 
     def __str__(self):
         return self.descricao

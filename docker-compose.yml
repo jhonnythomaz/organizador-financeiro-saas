@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # --- Serviço do Backend (Django) ---
+  backend:
+    build: . # Constrói a imagem usando o Dockerfile na pasta atual
+    container_name: organizador_backend
+    volumes:
+      - .:/app # Mapeia o código local para dentro do container para desenvolvimento
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=backend.settings
+      - SECRET_KEY=sua-secret-key-super-secreta-aqui-mude-em-producao
+      - DEBUG=True
+      - DB_HOST=db # Aponta para o serviço do banco de dados
+      - DB_NAME=organizador_db
+      - DB_USER=postgres
+      - DB_PASSWORD=@Jklpm2pb
+    depends_on:
+      - db # O backend só inicia depois que o banco de dados estiver pronto
+
+  # --- Serviço do Frontend (React) ---
+  frontend:
+    build: ./frontend
+    container_name: organizador_frontend
+    ports:
+      - "3000:80" # Mapeia a porta 3000 do seu PC para a porta 80 do container Nginx
+    depends_on:
+      - backend
+
+  # --- Serviço do Banco de Dados (PostgreSQL) ---
+  db:
+    image: postgres:15-alpine # Usa uma imagem oficial do PostgreSQL
+    container_name: organizador_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=organizador_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=@Jklpm2pb
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

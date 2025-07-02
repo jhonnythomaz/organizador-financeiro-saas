@@ -1,6 +1,7 @@
 # COPIE TUDO A PARTIR DAQUI
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +33,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'debug_toolbar',
 
     # Nossos apps
     'api.apps.ApiConfig',
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # << 2. ADICIONADO AQUI
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -74,11 +77,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'organizador_db',
-        'USER': 'postgres',
-        'PASSWORD': '@Jklpm2pb',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'organizador_db'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', '@Jklpm2pb'),
+        'HOST': os.getenv('DB_HOST', 'db'), # 'db' quando rodando no docker, 'localhost' localmente
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
@@ -148,3 +151,8 @@ REST_FRAMEWORK = {
     # ADICIONE ESTA LINHA:
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
+
+# Configuração da Django Debug Toolbar
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
